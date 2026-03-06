@@ -1,3 +1,12 @@
+**/.DS_Store
+datasets/
+discard/
+reference/
+predictions/
+reference/
+processed_data/
+results/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
