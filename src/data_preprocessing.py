@@ -61,8 +61,12 @@ class SplitData:
 
 # ── Loaders ─────────────────────────────────────────────────────────────
 
-def load_secom(data_path: str, label_path: str) -> Tuple[pd.DataFrame, pd.Series]:
+def load_secom(cfg: dict) -> Tuple[pd.DataFrame, pd.Series]:
     """Load the SECOM dataset and sort chronologically by timestamp."""
+    data_path = cfg["data_path"]
+    label_path = cfg["label_path"]
+    positive_label = cfg.get("positive_label", 1)
+
     X = pd.read_csv(data_path, sep=r"\s+", header=None)
 
     labels_raw: list[str] = []
@@ -86,43 +90,64 @@ def load_secom(data_path: str, label_path: str) -> Tuple[pd.DataFrame, pd.Series
     X = X.iloc[sort_idx].reset_index(drop=True)
     y = y.iloc[sort_idx].reset_index(drop=True)
 
-    # Convert labels: 1 → 1 (fail/anomaly), -1 → 0 (pass/normal)
-    y = (y == 1).astype(int)
+    # Convert labels: positive_label → 1 (fail/anomaly), else → 0 (pass/normal)
+    y = (y == positive_label).astype(int)
+
+    # Drop any columns specified in cfg
+    drop_cols = cfg.get("drop_cols", [])
+    id_cols = cfg.get("id_cols", [])
+    all_drop = set(drop_cols) | set(id_cols)
+    X = X.drop(columns=[c for c in all_drop if c in X.columns], errors="ignore")
+
     return X, y
 
 
-def load_ai4i(data_path: str) -> Tuple[pd.DataFrame, pd.Series]:
+def load_ai4i(cfg: dict) -> Tuple[pd.DataFrame, pd.Series]:
     """Load the AI4I 2020 Predictive Maintenance dataset."""
-    df = pd.read_csv(data_path)
-    y = df["Machine failure"].astype(int)
-    # Drop target + leaking columns + ID cols
-    drop = ["Machine failure", "TWF", "HDF", "PWF", "OSF", "RNF", "UDI", "Product ID"]
-    X = df.drop(columns=[c for c in drop if c in df.columns])
+    df = pd.read_csv(cfg["data_path"])
+
+    target_col = cfg["target_col"]
+    y = df[target_col].astype(int)
+
+    # Drop target + leaking columns + ID cols (all from cfg)
+    drop_cols = cfg.get("drop_cols", [])
+    id_cols = cfg.get("id_cols", [])
+    all_drop = set(drop_cols) | set(id_cols) | {target_col}
+    X = df.drop(columns=[c for c in all_drop if c in df.columns])
     return X, y
 
 
-def load_wafer(data_path: str) -> Tuple[pd.DataFrame, pd.Series]:
+def load_wafer(cfg: dict) -> Tuple[pd.DataFrame, pd.Series]:
     """Load the Wafer Process Quality dataset, sorted by Timestamp."""
-    df = pd.read_csv(data_path)
+    df = pd.read_csv(cfg["data_path"])
 
-    # Sort chronologically
-    df["Timestamp"] = pd.to_datetime(df["Timestamp"])
-    df = df.sort_values("Timestamp").reset_index(drop=True)
+    # Sort chronologically if a timestamp column is configured
+    timestamp_col = cfg.get("timestamp_col")
+    if timestamp_col and timestamp_col in df.columns:
+        df[timestamp_col] = pd.to_datetime(df[timestamp_col])
+        df = df.sort_values(timestamp_col).reset_index(drop=True)
 
-    y = df["Defect"].astype(int)
-    drop = ["Process_ID", "Wafer_ID", "Defect", "Join_Status", "Timestamp"]
-    X = df.drop(columns=[c for c in drop if c in df.columns])
+    target_col = cfg["target_col"]
+    y = df[target_col].astype(int)
+
+    # Drop target + timestamp + configured drop/ID cols
+    drop_cols = cfg.get("drop_cols", [])
+    id_cols = cfg.get("id_cols", [])
+    all_drop = set(drop_cols) | set(id_cols) | {target_col}
+    if timestamp_col:
+        all_drop.add(timestamp_col)
+    X = df.drop(columns=[c for c in all_drop if c in df.columns])
     return X, y
 
 
 def load_dataset(name: str, cfg: dict) -> Tuple[pd.DataFrame, pd.Series]:
     """Dispatch to the appropriate loader."""
     if name == "SECOM":
-        return load_secom(cfg["data_path"], cfg["label_path"])
+        return load_secom(cfg)
     elif name == "AI4I_2020":
-        return load_ai4i(cfg["data_path"])
+        return load_ai4i(cfg)
     elif name == "Wafer_Quality":
-        return load_wafer(cfg["data_path"])
+        return load_wafer(cfg)
     else:
         raise ValueError(f"Unknown dataset: {name}")
 
@@ -146,12 +171,18 @@ def preprocess_global(
     nan_thresh: float,
     categorical_cols: Optional[List[str]] = None,
     impute_strategy: str = "median",
+    y: Optional[np.ndarray] = None,
+    positive_label: int = 1,
 ) -> Tuple[np.ndarray, List[str], List[int], List[int]]:
     """Preprocess the *entire* timeline in one pass.
 
-    All fitters (zero-var, NaN-col, scaler, imputer) are fitted on the
-    **raw train split** ``X.iloc[:train_end]`` which *includes* anomalies
-    (Fix 1).  Only continuous columns are scaled (Fix 3).
+    All fitters (zero-var, NaN-col) are fitted on the **raw train split**
+    ``X.iloc[:train_end]`` which *includes* anomalies (Fix 1).
+    Only continuous columns are scaled (Fix 3).
+
+    The StandardScaler is fitted exclusively on normal samples in the
+    train split to avoid the masking effect caused by anomalous outliers
+    inflating the standard deviation.
 
     Parameters
     ----------
@@ -160,6 +191,8 @@ def preprocess_global(
     nan_thresh : max NaN fraction before a column is dropped.
     categorical_cols : original categorical column names (before one-hot).
     impute_strategy : ``"median"`` for baseline, ``"zero"`` for VAE.
+    y : optional label array (length N) used to identify normal samples.
+    positive_label : value in *y* that indicates an anomaly.
 
     Returns
     -------
@@ -205,10 +238,16 @@ def preprocess_global(
     arr = X.values.astype(np.float64)
 
     # ── Step 4: Scale CONTINUOUS columns only (Fix 3) ──
+    #    Fit scaler on normal-only train samples to avoid masking effect.
     if cont_indices:
         ci = np.array(cont_indices)
         scaler = StandardScaler()
-        scaler.fit(arr[:train_end][:, ci])
+        train_block = arr[:train_end][:, ci]
+        if y is not None:
+            normal_mask = y[:train_end] != positive_label
+            scaler.fit(train_block[normal_mask])
+        else:
+            scaler.fit(train_block)
         arr[:, ci] = scaler.transform(arr[:, ci])
 
     # ── Step 5: Impute / fill NaN ──

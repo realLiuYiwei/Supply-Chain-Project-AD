@@ -75,12 +75,16 @@ def run_baseline_pipeline(
     print(f"  Boundaries: train [0, {train_end}), "
           f"val [{train_end}, {val_end}), test [{val_end}, {N})")
 
+    y_arr = y.values
+
     # 3. Global preprocess (Fix 1 + Fix 3)
     X_processed, feat_names, cat_idx, cont_idx = preprocess_global(
         X, train_end,
         nan_thresh=cfg.NAN_COL_REMOVE_THRESH_BASELINE,
         categorical_cols=dataset_cfg["categorical_cols"],
         impute_strategy="median",
+        y=y_arr,
+        positive_label=dataset_cfg["positive_label"],
     )
     print(f"  After preprocessing: {X_processed.shape[1]} features "
           f"(cont={len(cont_idx)}, cat={len(cat_idx)})")
@@ -91,7 +95,6 @@ def run_baseline_pipeline(
           f"(4 × {X_processed.shape[1]})")
 
     # 5. Split + remove anomalies from train
-    y_arr = y.values
     split = split_and_remove_anomalies(
         X_feat, y_arr, train_end, val_end,
         positive_label=dataset_cfg["positive_label"],
@@ -154,6 +157,8 @@ def run_augmented_pipeline(
         nan_thresh=cfg.NAN_COL_REMOVE_THRESH_BASELINE,
         categorical_cols=dataset_cfg["categorical_cols"],
         impute_strategy="median",
+        y=y_arr,
+        positive_label=positive_label,
     )
     X_base_feat = sliding_window_features(X_base, cfg.WINDOW_SIZE)
     baseline_split = split_and_remove_anomalies(
@@ -169,6 +174,8 @@ def run_augmented_pipeline(
         nan_thresh=cfg.NAN_COL_REMOVE_THRESH_VAE_INPUT,
         categorical_cols=dataset_cfg["categorical_cols"],
         impute_strategy="zero",
+        y=y_arr,
+        positive_label=positive_label,
     )
     print(f"  VAE input: {X_vae.shape[1]} features "
           f"(cat={len(vae_cat_idx)}, cont={len(vae_cont_idx)})")
