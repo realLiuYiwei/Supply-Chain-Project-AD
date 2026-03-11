@@ -7,6 +7,7 @@ BASE_DATA_DIR = "datasets"
 RESULTS_DIR = "results"
 METRICS_DIR = "results/metrics"
 AUGMENTED_DIR = "augmented_data"
+SRC_DIR = "src"
 
 # ==========================================
 # 2. Dataset File Paths
