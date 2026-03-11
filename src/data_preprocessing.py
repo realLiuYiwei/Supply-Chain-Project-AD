@@ -1,15 +1,33 @@
 """
-data_preprocessing.py — Dataset loading, cleaning, and train/val/test splitting.
+data_preprocessing.py — Dataset loading, global preprocessing, and splitting.
 
-Pipeline order (both baseline and VAE):
-  1. Load raw data
-  2. Sort chronologically by timestamp (crucial for SECOM)
-  3. Drop target-leaking / ID columns
-  4. 6:2:2 train/val/test split (train = ONLY normal data)
-  5. Remove zero-variance columns      [fit on train]
-  6. Remove high-NaN columns            [fit on train]
-  7. Scale                              [fit on train]
-  8. Impute (baseline) or fill 0 (VAE)  [fit on train]
+Corrected pipeline (four critical fixes applied):
+
+  Fix 1 (Survivorship Bias): Zero-variance columns are identified on the
+         RAW train split *including* anomalies, so sensor-features that are
+         constant during normal operation but spike during faults are kept.
+
+  Fix 2 (Temporal Continuity): Preprocessing is applied GLOBALLY on the
+         continuous timeline.  The sliding window is applied *before*
+         anomalous samples are removed from the train set, preventing
+         phantom features from stitched non-adjacent time steps.
+
+  Fix 3 (Feature-Space Alignment): The StandardScaler is applied ONLY to
+         continuous columns; categorical one-hot columns remain as discrete
+         0/1 in both the baseline and VAE branches, ensuring the augmented
+         data occupies the same distributional space when combined.
+
+  Corrected order:
+    1. Load raw data, sort chronologically, drop leaking columns
+    2. Determine chronological split boundaries (6:2:2)
+    3. One-hot encode categoricals
+    4. Remove zero-variance columns      [fit on RAW train WITH anomalies]
+    5. Remove high-NaN columns            [fit on RAW train WITH anomalies]
+    6. Scale CONTINUOUS columns only      [fit on RAW train]
+    7. Impute (baseline) or NaN→0 (VAE)  [fit on RAW train]
+    ── timeline is still continuous here ──
+    8. (caller) Apply sliding window GLOBALLY
+    9. (caller) Split by boundaries, remove anomalies from train
 """
 
 from __future__ import annotations
@@ -109,222 +127,129 @@ def load_dataset(name: str, cfg: dict) -> Tuple[pd.DataFrame, pd.Series]:
         raise ValueError(f"Unknown dataset: {name}")
 
 
-# ── Splitting ───────────────────────────────────────────────────────────
+# ── Split boundaries ───────────────────────────────────────────────────
 
-def split_train_val_test(
-    X: pd.DataFrame,
-    y: pd.Series,
-    train_ratio: float = 0.6,
-    val_ratio: float = 0.2,
-    *,
-    positive_label: int = 1,
-) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame,
-           pd.Series, pd.Series, pd.Series]:
-    """
-    Split data 6:2:2 with the constraint that training set contains ONLY
-    normal samples.  Anomalous samples from what would have been the training
-    portion are pushed into the validation set.
-
-    Data is NOT shuffled — temporal ordering is preserved.
-    """
-    n = len(X)
+def determine_split_boundaries(
+    n: int, train_ratio: float = 0.6, val_ratio: float = 0.2,
+) -> Tuple[int, int]:
+    """Return ``(train_end, val_end)`` indices for a chronological split."""
     train_end = int(n * train_ratio)
     val_end = int(n * (train_ratio + val_ratio))
-
-    X_train_raw, y_train_raw = X.iloc[:train_end], y.iloc[:train_end]
-    X_val_raw, y_val_raw = X.iloc[train_end:val_end], y.iloc[train_end:val_end]
-    X_test, y_test = X.iloc[val_end:], y.iloc[val_end:]
-
-    # Move anomalies OUT of training set → into validation set
-    normal_mask = y_train_raw != positive_label
-    X_train = X_train_raw[normal_mask].reset_index(drop=True)
-    y_train = y_train_raw[normal_mask].reset_index(drop=True)
-
-    anomalous_from_train = X_train_raw[~normal_mask]
-    anomalous_labels = y_train_raw[~normal_mask]
-
-    X_val = pd.concat([anomalous_from_train, X_val_raw], ignore_index=True)
-    y_val = pd.concat([anomalous_labels, y_val_raw], ignore_index=True)
-
-    return X_train, X_val, X_test, y_train, y_val, y_test
+    return train_end, val_end
 
 
-# ── Column pruning ──────────────────────────────────────────────────────
+# ── Global preprocessing ──────────────────────────────────────────────
 
-def get_zero_variance_cols(X_train: pd.DataFrame) -> List[str]:
-    """Identify columns with zero variance (fit on train only)."""
-    numeric = X_train.select_dtypes(include=[np.number])
-    return list(numeric.columns[numeric.var(skipna=True) == 0])
-
-
-def get_high_nan_cols(
-    X_train: pd.DataFrame, threshold: float
-) -> List[str]:
-    """Columns where NaN fraction > threshold (fit on train only)."""
-    frac = X_train.isna().mean()
-    return list(frac[frac > threshold].index)
-
-
-# ── Preprocessing pipeline ──────────────────────────────────────────────
-
-def preprocess_baseline(
-    X_train: pd.DataFrame,
-    X_val: pd.DataFrame,
-    X_test: pd.DataFrame,
-    y_train: pd.Series,
-    y_val: pd.Series,
-    y_test: pd.Series,
+def preprocess_global(
+    X: pd.DataFrame,
+    train_end: int,
     nan_thresh: float,
     categorical_cols: Optional[List[str]] = None,
-) -> SplitData:
-    """
-    Baseline preprocessing (steps 5–8):
-      5. Remove zero-variance columns
-      6. Remove high-NaN columns
-      7. StandardScaler
-      8. SimpleImputer (median)
+    impute_strategy: str = "median",
+) -> Tuple[np.ndarray, List[str], List[int], List[int]]:
+    """Preprocess the *entire* timeline in one pass.
 
-    One-hot encodes categorical columns first, then applies numeric pipeline.
-    """
-    categorical_cols = categorical_cols or []
+    All fitters (zero-var, NaN-col, scaler, imputer) are fitted on the
+    **raw train split** ``X.iloc[:train_end]`` which *includes* anomalies
+    (Fix 1).  Only continuous columns are scaled (Fix 3).
 
-    # One-hot encode categoricals before numeric pipeline
-    if categorical_cols:
-        cats_in_train = [c for c in categorical_cols if c in X_train.columns]
-        X_train = pd.get_dummies(X_train, columns=cats_in_train, dtype=float)
-        X_val = pd.get_dummies(X_val, columns=cats_in_train, dtype=float)
-        X_test = pd.get_dummies(X_test, columns=cats_in_train, dtype=float)
-        # Align columns (train is reference)
-        X_val = X_val.reindex(columns=X_train.columns, fill_value=0.0)
-        X_test = X_test.reindex(columns=X_train.columns, fill_value=0.0)
-
-    # Step 5 — zero-variance
-    zv_cols = get_zero_variance_cols(X_train)
-    X_train = X_train.drop(columns=zv_cols, errors="ignore")
-    X_val = X_val.drop(columns=zv_cols, errors="ignore")
-    X_test = X_test.drop(columns=zv_cols, errors="ignore")
-
-    # Step 6 — high-NaN
-    nan_cols = get_high_nan_cols(X_train, nan_thresh)
-    X_train = X_train.drop(columns=nan_cols, errors="ignore")
-    X_val = X_val.drop(columns=nan_cols, errors="ignore")
-    X_test = X_test.drop(columns=nan_cols, errors="ignore")
-
-    feature_names = list(X_train.columns)
-
-    # Step 7 — scale
-    scaler = StandardScaler()
-    arr_train = scaler.fit_transform(X_train.values.astype(np.float64))
-    arr_val = scaler.transform(X_val.values.astype(np.float64))
-    arr_test = scaler.transform(X_test.values.astype(np.float64))
-
-    # Step 8 — impute
-    imputer = SimpleImputer(strategy="median")
-    arr_train = imputer.fit_transform(arr_train)
-    arr_val = imputer.transform(arr_val)
-    arr_test = imputer.transform(arr_test)
-
-    return SplitData(
-        X_train=arr_train,
-        X_val=arr_val,
-        X_test=arr_test,
-        y_train=y_train.values,
-        y_val=y_val.values,
-        y_test=y_test.values,
-        feature_names=feature_names,
-    )
-
-
-def preprocess_for_vae(
-    X_train: pd.DataFrame,
-    X_val: pd.DataFrame,
-    X_test: pd.DataFrame,
-    y_train: pd.Series,
-    y_val: pd.Series,
-    y_test: pd.Series,
-    nan_thresh: float,
-    categorical_cols: Optional[List[str]] = None,
-) -> Tuple[SplitData, List[int], List[int]]:
-    """
-    VAE preprocessing (steps 5–10):
-      5. Remove zero-variance columns
-      6. Remove high-NaN columns (using VAE threshold)
-      7. StandardScaler  (on continuous columns)
-      8. NaN → 0.0
-      9. NaN mask creation  (stored in SplitData arrays as extra info)
-     10. One-hot encode categoricals
+    Parameters
+    ----------
+    X : DataFrame — full timeline, chronologically sorted.
+    train_end : index separating raw-train from val+test.
+    nan_thresh : max NaN fraction before a column is dropped.
+    categorical_cols : original categorical column names (before one-hot).
+    impute_strategy : ``"median"`` for baseline, ``"zero"`` for VAE.
 
     Returns
     -------
-    split : SplitData — arrays with NaN replaced by 0, categoricals one-hot
-    categorical_indices : column indices that are one-hot categorical
-    continuous_indices  : column indices that are continuous
+    X_processed : ndarray ``(N, D)``
+    feature_names : list of column names after one-hot / pruning
+    cat_indices : indices of one-hot categorical columns in the array
+    cont_indices : indices of continuous columns in the array
     """
     categorical_cols = categorical_cols or []
+    X = X.copy()
 
-    # Step 5 — zero-variance
-    zv_cols = get_zero_variance_cols(X_train)
-    X_train = X_train.drop(columns=zv_cols, errors="ignore")
-    X_val = X_val.drop(columns=zv_cols, errors="ignore")
-    X_test = X_test.drop(columns=zv_cols, errors="ignore")
-
-    # Step 6 — high-NaN (VAE threshold)
-    nan_cols = get_high_nan_cols(X_train, nan_thresh)
-    X_train = X_train.drop(columns=nan_cols, errors="ignore")
-    X_val = X_val.drop(columns=nan_cols, errors="ignore")
-    X_test = X_test.drop(columns=nan_cols, errors="ignore")
-
-    # Separate continuous and categorical
-    cat_cols_present = [c for c in categorical_cols if c in X_train.columns]
-    cont_cols = [c for c in X_train.columns if c not in cat_cols_present]
-
-    # Step 7 — scale continuous columns only
-    scaler = StandardScaler()
-    if cont_cols:
-        X_train[cont_cols] = scaler.fit_transform(
-            X_train[cont_cols].values.astype(np.float64)
-        )
-        X_val[cont_cols] = scaler.transform(
-            X_val[cont_cols].values.astype(np.float64)
-        )
-        X_test[cont_cols] = scaler.transform(
-            X_test[cont_cols].values.astype(np.float64)
-        )
-
-    # Step 8 — NaN → 0.0 (after scaling, so 0 is meaningful)
-    X_train = X_train.fillna(0.0)
-    X_val = X_val.fillna(0.0)
-    X_test = X_test.fillna(0.0)
-
-    # Step 10 — one-hot encode categoricals
+    # ── Step 1: One-hot encode categoricals ──
+    cat_cols_present = [c for c in categorical_cols if c in X.columns]
     if cat_cols_present:
-        X_train = pd.get_dummies(X_train, columns=cat_cols_present, dtype=float)
-        X_val = pd.get_dummies(X_val, columns=cat_cols_present, dtype=float)
-        X_test = pd.get_dummies(X_test, columns=cat_cols_present, dtype=float)
-        X_val = X_val.reindex(columns=X_train.columns, fill_value=0.0)
-        X_test = X_test.reindex(columns=X_train.columns, fill_value=0.0)
+        X = pd.get_dummies(X, columns=cat_cols_present, dtype=float)
 
-    feature_names = list(X_train.columns)
+    # ── Reference: raw train split WITH anomalies ──
+    X_raw_train = X.iloc[:train_end]
 
-    # Identify categorical vs continuous indices in the final array
-    categorical_indices: List[int] = []
-    continuous_indices: List[int] = []
+    # ── Step 2: Zero-variance removal (Fix 1 — fit on raw train) ──
+    numeric_train = X_raw_train.select_dtypes(include=[np.number])
+    zv_cols = list(numeric_train.columns[numeric_train.var(skipna=True) == 0])
+    X = X.drop(columns=zv_cols, errors="ignore")
+
+    # ── Step 3: High-NaN removal (fit on raw train) ──
+    X_raw_train = X.iloc[:train_end]      # recompute after column drop
+    frac = X_raw_train.isna().mean()
+    nan_cols = list(frac[frac > nan_thresh].index)
+    X = X.drop(columns=nan_cols, errors="ignore")
+
+    feature_names = list(X.columns)
+
+    # ── Identify categorical vs continuous columns ──
+    cat_indices: List[int] = []
+    cont_indices: List[int] = []
     for i, col in enumerate(feature_names):
         is_cat = any(col.startswith(f"{c}_") for c in categorical_cols)
         if is_cat:
-            categorical_indices.append(i)
+            cat_indices.append(i)
         else:
-            continuous_indices.append(i)
+            cont_indices.append(i)
 
-    split = SplitData(
-        X_train=X_train.values.astype(np.float64),
-        X_val=X_val.values.astype(np.float64),
-        X_test=X_test.values.astype(np.float64),
-        y_train=y_train.values,
-        y_val=y_val.values,
-        y_test=y_test.values,
-        feature_names=feature_names,
-        categorical_indices=categorical_indices,
-        continuous_indices=continuous_indices,
+    arr = X.values.astype(np.float64)
+
+    # ── Step 4: Scale CONTINUOUS columns only (Fix 3) ──
+    if cont_indices:
+        ci = np.array(cont_indices)
+        scaler = StandardScaler()
+        scaler.fit(arr[:train_end][:, ci])
+        arr[:, ci] = scaler.transform(arr[:, ci])
+
+    # ── Step 5: Impute / fill NaN ──
+    if impute_strategy == "median":
+        imputer = SimpleImputer(strategy="median")
+        imputer.fit(arr[:train_end])
+        arr = imputer.transform(arr)
+    elif impute_strategy == "zero":
+        arr = np.nan_to_num(arr, nan=0.0)
+
+    return arr, feature_names, cat_indices, cont_indices
+
+
+# ── Post-windowing split ──────────────────────────────────────────────
+
+def split_and_remove_anomalies(
+    X_feat: np.ndarray,
+    y: np.ndarray,
+    train_end: int,
+    val_end: int,
+    positive_label: int = 1,
+) -> SplitData:
+    """Split globally-processed (and possibly windowed) data.
+
+    Anomalies in the raw-train portion are removed from train and pushed
+    into the validation set, preserving the constraint that the training
+    set contains **only** normal samples — without breaking the timeline
+    during feature extraction (Fix 2).
+    """
+    X_tr_raw, y_tr_raw = X_feat[:train_end], y[:train_end]
+    X_va_raw, y_va_raw = X_feat[train_end:val_end], y[train_end:val_end]
+    X_te, y_te = X_feat[val_end:], y[val_end:]
+
+    normal_mask = y_tr_raw != positive_label
+    X_tr = X_tr_raw[normal_mask]
+    y_tr = y_tr_raw[normal_mask]
+
+    X_va = np.concatenate([X_tr_raw[~normal_mask], X_va_raw], axis=0)
+    y_va = np.concatenate([y_tr_raw[~normal_mask], y_va_raw], axis=0)
+
+    return SplitData(
+        X_train=X_tr, X_val=X_va, X_test=X_te,
+        y_train=y_tr, y_val=y_va, y_test=y_te,
     )
-    return split, categorical_indices, continuous_indices

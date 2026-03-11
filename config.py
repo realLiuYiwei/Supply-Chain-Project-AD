@@ -110,7 +110,7 @@ DATASET_CONFIGS = {
         "timestamp_col": None,
         "categorical_cols": ["Type"],
         "positive_label": 1,
-        "num_clusters": 1,
+        "num_clusters": 3,
     },
     "Wafer_Quality": {
         "data_path": WAFER_DATA_PATH,
