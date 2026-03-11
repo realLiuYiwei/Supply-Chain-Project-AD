@@ -2,8 +2,7 @@ import os
 import torch
 import numpy as np
 import pandas as pd
-from sklearn.preprocessing import StandardScaler, OneHotEncoder
-from torch.utils.data import DataLoader, TensorDataset # 修正 1: 导入 PyTorch 数据加载器
+from torch.utils.data import DataLoader, TensorDataset 
 
 from config import (
     SEQ_LEN,
@@ -16,7 +15,6 @@ from config import (
     AUGMENTED_DIR
 )
 
-# 修正 2: 显式导入 TimeOmniVAE 本身，以便实例化
 from time_omni_vae import TimeOmniVAE, TimeOmniVAEConfig, TimeOmniVAETrainer
 
 def create_windows(data: np.ndarray, seq_len: int) -> np.ndarray:
@@ -28,35 +26,27 @@ def create_windows(data: np.ndarray, seq_len: int) -> np.ndarray:
 def flatten_windows(windows: np.ndarray) -> np.ndarray:
     return windows[:, -1, :]
 
-def train_and_augment(train_df: pd.DataFrame, dataset_name: str, num_cols: list, cat_cols: list, latent_dim: int = 16) -> pd.DataFrame:
+def train_and_augment(X_train_vae: np.ndarray, dataset_name: str, preprocessor, num_len: int, latent_dim: int = 16) -> np.ndarray:
+    """
+    修改点 1：输入直接是预处理好的 NumPy 数组 X_train_vae。
+    修改点 2：传入全局 preprocessor 仅仅为了在生成类别特征时进行 One-Hot 的 Argmax 截断（Snapping）。
+    """
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print(f"Training TimeOmniVAE on device: {device}")
 
-    scaler = StandardScaler()
-    if num_cols:
-        scaled_num = scaler.fit_transform(train_df[num_cols])
-    else:
-        scaled_num = np.empty((len(train_df), 0))
+    num_features = X_train_vae.shape[1]
+    cat_len = num_features - num_len
+    
+    # K 是类别编码后的总维度数，如果没有类别特征则设为 1
+    K = cat_len if cat_len > 0 else 1
 
-    if cat_cols:
-        ohe = OneHotEncoder(sparse_output=False, handle_unknown='ignore')
-        encoded_cat = ohe.fit_transform(train_df[cat_cols])
-        K = encoded_cat.shape[1] 
-    else:
-        encoded_cat = np.empty((len(train_df), 0))
-        K = 1
+    # 直接使用预处理好的数据切窗
+    windows = create_windows(X_train_vae, SEQ_LEN)
 
-    processed_data = np.hstack([scaled_num, encoded_cat])
-    num_features = processed_data.shape[1]
-
-    windows = create_windows(processed_data, SEQ_LEN)
-
-    # 修正 3: 将 NumPy 数组包装成 PyTorch DataLoader
     tensor_windows = torch.tensor(windows, dtype=torch.float32)
     dataset = TensorDataset(tensor_windows)
     loader = DataLoader(dataset, batch_size=BATCH_SIZE, shuffle=True)
 
-    # 修正 4: 使用正确的 config 参数 (input_dim 而不是 feature_dim)
     config = TimeOmniVAEConfig(
         input_dim=num_features,
         latent_dim=latent_dim,
@@ -66,7 +56,6 @@ def train_and_augment(train_df: pd.DataFrame, dataset_name: str, num_cols: list,
         learn_cluster_centers=LEARN_CLUSTER_CENTERS
     )
 
-    # 修正 5: 先实例化模型，再将其传给 Trainer，并移除不支持的 init_centers 等参数
     model = TimeOmniVAE(config)
     trainer = TimeOmniVAETrainer(
         model=model,
@@ -75,59 +64,58 @@ def train_and_augment(train_df: pd.DataFrame, dataset_name: str, num_cols: list,
         num_clusters=K
     )
 
-    # 修正 6: 传入 DataLoader 和 epoch 数量
     trainer.fit(loader, epochs=VAE_EPOCHS)
 
+    # 生成数据
     num_gen_windows = len(windows) // 2
-    
-    # 修正 7: generate 需要传入 seq_len，并转回 NumPy 数组
     generated_windows = trainer.generate(num_samples=num_gen_windows, seq_len=SEQ_LEN)
     generated_windows = generated_windows.numpy()
 
     generated_flat = flatten_windows(generated_windows)
 
-    num_num_cols = len(num_cols)
-    gen_num = generated_flat[:, :num_num_cols]
-    gen_cat_continuous = generated_flat[:, num_num_cols:]
-
-    if num_cols:
-        restored_num = scaler.inverse_transform(gen_num)
-    else:
-        restored_num = np.empty((len(generated_flat), 0))
-
-    restored_cat_list = []
-    if cat_cols:
-        start_idx = 0
+    # ==========================================
+    # 修改点 3：只做 Snapping (截断)，不做 Inverse Transform
+    # 保证输出依然是 One-Hot 格式，方便直接喂给 PyOD
+    # ==========================================
+    gen_num = generated_flat[:, :num_len]
+    
+    if cat_len > 0:
+        gen_cat_continuous = generated_flat[:, num_len:]
         snapped_cat = np.zeros_like(gen_cat_continuous)
         
-        for categories in ohe.categories_:
-            cat_len = len(categories)
-            end_idx = start_idx + cat_len
+        start_idx = 0
+        # 从全局预处理器中提取 OneHotEncoder 的类别信息
+        ohe = preprocessor.named_transformers_['cat'].named_steps['onehot'] if 'cat' in preprocessor.named_transformers_ else preprocessor.named_transformers_['cat']
+        
+        # 兼容 pipeline 或直接使用 OneHotEncoder 的情况
+        categories_list = ohe.categories_ if hasattr(ohe, 'categories_') else []
+
+        for categories in categories_list:
+            cat_len_current = len(categories)
+            end_idx = start_idx + cat_len_current
             segment = gen_cat_continuous[:, start_idx:end_idx]
+            
+            # 找到概率最大的类别，将其置为 1，其余为 0
             argmax_indices = np.argmax(segment, axis=1)
-            snapped_cat[np.arange(len(segment)), start_idx + argmax_indices] = 1
+            snapped_cat[np.arange(len(segment)), argmax_indices] = 1
+            
             start_idx = end_idx
 
-        restored_cat = ohe.inverse_transform(snapped_cat)
-        restored_cat_df = pd.DataFrame(restored_cat, columns=cat_cols)
+        # 拼接数值和截断后的类别特征
+        final_generated = np.hstack([gen_num, snapped_cat])
     else:
-        restored_cat_df = pd.DataFrame()
+        final_generated = gen_num
 
-    restored_num_df = pd.DataFrame(restored_num, columns=num_cols)
-
-    generated_df = pd.concat([restored_num_df, restored_cat_df], axis=1)
-    generated_df = generated_df[train_df.columns] 
-
-    augmented_train_df = pd.concat([train_df, generated_df], ignore_index=True)
-
+    # 简单保存为 npy 供后续 debug，或者你可以选择不存
     os.makedirs(AUGMENTED_DIR, exist_ok=True)
-    save_path = os.path.join(AUGMENTED_DIR, f"{dataset_name}_augmented_train.csv")
-    augmented_train_df.to_csv(save_path, index=False)
+    save_path = os.path.join(AUGMENTED_DIR, f"{dataset_name}_augmented_features.npy")
+    np.save(save_path, final_generated)
     
-    print(f"Successfully appended {len(generated_df)} augmented samples.")
-    print(f"Saved to: {save_path}")
+    print(f"Successfully generated {len(final_generated)} augmented samples in latent feature space.")
+    print(f"Saved NumPy array to: {save_path}")
 
-    return augmented_train_df
+    # 修改点 4：直接返回 NumPy Array，不用拼 Pandas
+    return final_generated
 
 if __name__ == "__main__":
     pass

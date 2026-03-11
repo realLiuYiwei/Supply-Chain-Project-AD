@@ -13,8 +13,8 @@ AUGMENTED_DIR = "augmented_data"
 # ==========================================
 SECOM_DATA_PATH = "datasets/secom/secom.data"
 SECOM_LABEL_PATH = "datasets/secom/secom_labels.data"
-AI4I_PATH = "datasets/ai4i_2020/ai4i2020.csv"
-WAFER_PATH = "datasets/wafer_process_quality/semiconductor_quality_control.csv"
+AI4I_DATA_PATH = "datasets/ai4i_2020/ai4i2020.csv"
+WAFER_DATA_PATH = "datasets/wafer_process_quality/semiconductor_quality_control.csv"
 
 # ==========================================
 # 3. TimeOmniVAE Specific Design Pattern Hyperparameters

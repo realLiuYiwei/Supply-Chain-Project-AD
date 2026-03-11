@@ -18,5 +18,7 @@ CONDA_PATH=$HOME/miniconda3
 source "${CONDA_PATH}/etc/profile.d/conda.sh"
 conda activate sc_ad
 
+export PYTHONPATH=$PWD:$PYTHONPATH
+
 # 运行主程序
-python run_experiments.py
+python -R src/run_experiments.py
