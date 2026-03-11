@@ -2,61 +2,64 @@ import pandas as pd
 import os
 import logging
 
-# 1. Import METRICS_DIR from config
 from config import METRICS_DIR
 
-# 2. Import loaders and evaluate_models from baseline_pipeline
-from baseline_pipeline import (
-    load_sensor_data, 
-    load_qc_data, 
-    load_machine_telemetry_data, 
+# 修正 1: 从 baseline.py 导入正确的加载器和评估函数
+from baseline import (
+    load_secom, 
+    load_ai4i, 
+    load_wafer, 
     evaluate_models
 )
 
-# 2 (cont). Import the generation function from timevae_augmentor
-from time_vae_augmentor import augment_with_timevae
+# 修正 2: 导入正确的生成函数名
+from time_vae_augmentor import train_and_augment
 
-# Configure basic logging for observability
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 def run_experiments():
-    # 3. Iterate over the three dataset loaders
+    # 修正 3: 使用正确的加载器列表
     loaders = [
-        load_sensor_data,
-        load_qc_data,
-        load_machine_telemetry_data
+        load_secom,
+        load_ai4i,
+        load_wafer
     ]
     
     all_results = []
     
     for loader in loaders:
-        dataset_name = loader.__name__
-        logging.info(f"--- Starting experimental pipeline for {dataset_name} ---")
-        
-        # 4. Wrap in a try-except block to ensure pipeline continuity
         try:
-            # Load Train, Val, Test DataFrames
-            train_df, val_df, test_df = loader()
+            # 修正 4: 接收 baseline.py 中 load 函数返回的完整元组
+            dataset_name, train_df, val_df, test_df, feature_cols, target_col = loader()
+            logging.info(f"--- Starting experimental pipeline for {dataset_name} ---")
             
             # Step A: Baseline Evaluation
             logging.info(f"[{dataset_name}] Step A: Running Baseline evaluation.")
             baseline_metrics = evaluate_models(
-                train_df, val_df, test_df, 
-                exp_type='Baseline',
-                dataset_name=dataset_name 
+                train_df, val_df, test_df, feature_cols, target_col, 
+                dataset_name=dataset_name, 
+                exp_type='Baseline'
             )
             all_results.append(baseline_metrics)
             
+            # 修正 5: 在外部提取 num_cols 和 cat_cols 传给 augmentor
+            nunique_counts = train_df[feature_cols].nunique(dropna=True)
+            valid_feature_cols = nunique_counts[nunique_counts > 1].index.tolist()
+            num_cols = train_df[valid_feature_cols].select_dtypes(include=['int64', 'float64']).columns.tolist()
+            cat_cols = train_df[valid_feature_cols].select_dtypes(include=['object', 'category']).columns.tolist()
+
             # Step B: TimeVAE Augmentation
             logging.info(f"[{dataset_name}] Step B: Augmenting training data.")
-            augmented_train_df = augment_with_timevae(train_df)
+            augmented_train_df = train_and_augment(
+                train_df, dataset_name, num_cols, cat_cols
+            )
             
             # Step C: Augmented Evaluation
             logging.info(f"[{dataset_name}] Step C: Running TimeVAE_Augmented evaluation.")
             augmented_metrics = evaluate_models(
-                augmented_train_df, val_df, test_df, 
-                exp_type='TimeVAE_Augmented',
-                dataset_name=dataset_name
+                augmented_train_df, val_df, test_df, feature_cols, target_col, 
+                dataset_name=dataset_name, 
+                exp_type='TimeVAE_Augmented'
             )
             all_results.append(augmented_metrics)
             
@@ -64,15 +67,11 @@ def run_experiments():
             
         except Exception as e:
             logging.error(f"[{dataset_name}] Pipeline failed. Error: {e}")
-            continue  # Continue to the next dataset loader
+            continue
             
-    # 5. Concatenate all metric DataFrames and save
     if all_results:
         final_results_df = pd.concat(all_results, ignore_index=True)
-        
-        # Ensure the directory exists
         os.makedirs(METRICS_DIR, exist_ok=True)
-        
         output_path = os.path.join(METRICS_DIR, 'modular_experiment_results.csv')
         final_results_df.to_csv(output_path, index=False)
         logging.info(f"All experiments finished. Results securely saved to {output_path}")
