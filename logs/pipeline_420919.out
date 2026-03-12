@@ -1,0 +1,346 @@
+============================================================
+Supply-Chain Anomaly Detection Pipeline
+============================================================
+
+────────────────────────────────────────────────────────────
+[BASELINE] SECOM
+────────────────────────────────────────────────────────────
+  Loaded: 1567 samples, 590 features, anomaly rate = 0.066
+  Boundaries: train [0, 940), val [940, 1253), test [1253, 1567)
+  After preprocessing: 444 features (cont=444, cat=0)
+  After windowing: 1776 features (4 × 444)
+  Split: train=864 (all normal), val=389, test=314
+  Training IForest...
+    Val  ROC-AUC=0.4386  PR-AUC=0.2920
+    Test ROC-AUC=0.2902  PR-AUC=0.0420
+  Training COPOD...
+    Val  ROC-AUC=0.6205  PR-AUC=0.4383
+    Test ROC-AUC=0.4324  PR-AUC=0.0532
+  Training ECOD...
+    Val  ROC-AUC=0.5894  PR-AUC=0.3895
+    Test ROC-AUC=0.3712  PR-AUC=0.0436
+  Training LOF...
+    Val  ROC-AUC=0.2891  PR-AUC=0.1764
+    Test ROC-AUC=0.4235  PR-AUC=0.0580
+
+────────────────────────────────────────────────────────────
+[AUGMENTED] SECOM
+────────────────────────────────────────────────────────────
+  Baseline branch: train=864 (normal), val=389, test=314
+  VAE input: 444 features (cat=0, cont=444)
+  Normal-train windows: 649 / 1563 total
+  [VAE] Training for 50 epochs on 649 windows (D=444, T=5, clusters=1)...
+[Epoch   1/50] loss/total: 1.4049 | loss/recon: 1.2280 | loss/kl: 0.0137 | loss/temporal: 1.6316 | loss/cluster: 0.0000
+[Epoch   2/50] loss/total: 1.3069 | loss/recon: 1.0917 | loss/kl: 0.0509 | loss/temporal: 1.6442 | loss/cluster: 0.0000
+[Epoch   3/50] loss/total: 1.2625 | loss/recon: 1.0602 | loss/kl: 0.0368 | loss/temporal: 1.6554 | loss/cluster: 0.0000
+[Epoch   4/50] loss/total: 1.2133 | loss/recon: 1.0304 | loss/kl: 0.0165 | loss/temporal: 1.6636 | loss/cluster: 0.0000
+[Epoch   5/50] loss/total: 1.1756 | loss/recon: 0.9988 | loss/kl: 0.0115 | loss/temporal: 1.6533 | loss/cluster: 0.0000
+[Epoch   6/50] loss/total: 1.1416 | loss/recon: 0.9690 | loss/kl: 0.0077 | loss/temporal: 1.6493 | loss/cluster: 0.0000
+[Epoch   7/50] loss/total: 1.1427 | loss/recon: 0.9710 | loss/kl: 0.0045 | loss/temporal: 1.6718 | loss/cluster: 0.0000
+[Epoch   8/50] loss/total: 1.1154 | loss/recon: 0.9480 | loss/kl: 0.0029 | loss/temporal: 1.6443 | loss/cluster: 0.0000
+[Epoch   9/50] loss/total: 1.1764 | loss/recon: 0.9975 | loss/kl: 0.0025 | loss/temporal: 1.7647 | loss/cluster: 0.0000
+[Epoch  10/50] loss/total: 1.1922 | loss/recon: 1.0092 | loss/kl: 0.0022 | loss/temporal: 1.8083 | loss/cluster: 0.0000
+[Epoch  11/50] loss/total: 1.1165 | loss/recon: 0.9490 | loss/kl: 0.0020 | loss/temporal: 1.6550 | loss/cluster: 0.0000
+[Epoch  12/50] loss/total: 1.1202 | loss/recon: 0.9532 | loss/kl: 0.0017 | loss/temporal: 1.6531 | loss/cluster: 0.0000
+[Epoch  13/50] loss/total: 1.1135 | loss/recon: 0.9464 | loss/kl: 0.0015 | loss/temporal: 1.6562 | loss/cluster: 0.0000
+[Epoch  14/50] loss/total: 1.1055 | loss/recon: 0.9398 | loss/kl: 0.0014 | loss/temporal: 1.6428 | loss/cluster: 0.0000
+[Epoch  15/50] loss/total: 1.1234 | loss/recon: 0.9539 | loss/kl: 0.0013 | loss/temporal: 1.6825 | loss/cluster: 0.0000
+[Epoch  16/50] loss/total: 1.0877 | loss/recon: 0.9242 | loss/kl: 0.0011 | loss/temporal: 1.6240 | loss/cluster: 0.0000
+[Epoch  17/50] loss/total: 1.1103 | loss/recon: 0.9429 | loss/kl: 0.0011 | loss/temporal: 1.6635 | loss/cluster: 0.0000
+[Epoch  18/50] loss/total: 1.1147 | loss/recon: 0.9467 | loss/kl: 0.0011 | loss/temporal: 1.6693 | loss/cluster: 0.0000
+[Epoch  19/50] loss/total: 1.0947 | loss/recon: 0.9304 | loss/kl: 0.0010 | loss/temporal: 1.6328 | loss/cluster: 0.0000
+[Epoch  20/50] loss/total: 1.0989 | loss/recon: 0.9332 | loss/kl: 0.0011 | loss/temporal: 1.6462 | loss/cluster: 0.0000
+[Epoch  21/50] loss/total: 1.0942 | loss/recon: 0.9294 | loss/kl: 0.0011 | loss/temporal: 1.6365 | loss/cluster: 0.0000
+[Epoch  22/50] loss/total: 1.0978 | loss/recon: 0.9323 | loss/kl: 0.0010 | loss/temporal: 1.6441 | loss/cluster: 0.0000
+[Epoch  23/50] loss/total: 1.1518 | loss/recon: 0.9803 | loss/kl: 0.0011 | loss/temporal: 1.7045 | loss/cluster: 0.0000
+[Epoch  24/50] loss/total: 1.1031 | loss/recon: 0.9373 | loss/kl: 0.0011 | loss/temporal: 1.6474 | loss/cluster: 0.0000
+[Epoch  25/50] loss/total: 1.1139 | loss/recon: 0.9470 | loss/kl: 0.0011 | loss/temporal: 1.6585 | loss/cluster: 0.0000
+[Epoch  26/50] loss/total: 1.1041 | loss/recon: 0.9380 | loss/kl: 0.0011 | loss/temporal: 1.6509 | loss/cluster: 0.0000
+[Epoch  27/50] loss/total: 1.0940 | loss/recon: 0.9300 | loss/kl: 0.0010 | loss/temporal: 1.6311 | loss/cluster: 0.0000
+[Epoch  28/50] loss/total: 1.0980 | loss/recon: 0.9332 | loss/kl: 0.0008 | loss/temporal: 1.6401 | loss/cluster: 0.0000
+[Epoch  29/50] loss/total: 1.1104 | loss/recon: 0.9429 | loss/kl: 0.0007 | loss/temporal: 1.6686 | loss/cluster: 0.0000
+[Epoch  30/50] loss/total: 1.1122 | loss/recon: 0.9447 | loss/kl: 0.0006 | loss/temporal: 1.6687 | loss/cluster: 0.0000
+[Epoch  31/50] loss/total: 1.1131 | loss/recon: 0.9472 | loss/kl: 0.0006 | loss/temporal: 1.6529 | loss/cluster: 0.0000
+[Epoch  32/50] loss/total: 1.1054 | loss/recon: 0.9381 | loss/kl: 0.0007 | loss/temporal: 1.6657 | loss/cluster: 0.0000
+[Epoch  33/50] loss/total: 1.0971 | loss/recon: 0.9314 | loss/kl: 0.0008 | loss/temporal: 1.6478 | loss/cluster: 0.0000
+[Epoch  34/50] loss/total: 1.0972 | loss/recon: 0.9316 | loss/kl: 0.0008 | loss/temporal: 1.6478 | loss/cluster: 0.0000
+[Epoch  35/50] loss/total: 1.1197 | loss/recon: 0.9496 | loss/kl: 0.0008 | loss/temporal: 1.6932 | loss/cluster: 0.0000
+[Epoch  36/50] loss/total: 1.1246 | loss/recon: 0.9558 | loss/kl: 0.0008 | loss/temporal: 1.6802 | loss/cluster: 0.0000
+[Epoch  37/50] loss/total: 1.0903 | loss/recon: 0.9265 | loss/kl: 0.0008 | loss/temporal: 1.6298 | loss/cluster: 0.0000
+[Epoch  38/50] loss/total: 1.0988 | loss/recon: 0.9329 | loss/kl: 0.0008 | loss/temporal: 1.6511 | loss/cluster: 0.0000
+[Epoch  39/50] loss/total: 1.0885 | loss/recon: 0.9243 | loss/kl: 0.0008 | loss/temporal: 1.6348 | loss/cluster: 0.0000
+[Epoch  40/50] loss/total: 1.1123 | loss/recon: 0.9444 | loss/kl: 0.0007 | loss/temporal: 1.6714 | loss/cluster: 0.0000
+[Epoch  41/50] loss/total: 1.1111 | loss/recon: 0.9437 | loss/kl: 0.0007 | loss/temporal: 1.6671 | loss/cluster: 0.0000
+[Epoch  42/50] loss/total: 1.0936 | loss/recon: 0.9288 | loss/kl: 0.0007 | loss/temporal: 1.6411 | loss/cluster: 0.0000
+[Epoch  43/50] loss/total: 1.1605 | loss/recon: 0.9822 | loss/kl: 0.0007 | loss/temporal: 1.7757 | loss/cluster: 0.0000
+[Epoch  44/50] loss/total: 1.1477 | loss/recon: 0.9719 | loss/kl: 0.0007 | loss/temporal: 1.7510 | loss/cluster: 0.0000
+[Epoch  45/50] loss/total: 1.1051 | loss/recon: 0.9389 | loss/kl: 0.0007 | loss/temporal: 1.6553 | loss/cluster: 0.0000
+[Epoch  46/50] loss/total: 1.0839 | loss/recon: 0.9209 | loss/kl: 0.0007 | loss/temporal: 1.6230 | loss/cluster: 0.0000
+[Epoch  47/50] loss/total: 1.1046 | loss/recon: 0.9378 | loss/kl: 0.0007 | loss/temporal: 1.6615 | loss/cluster: 0.0000
+[Epoch  48/50] loss/total: 1.0963 | loss/recon: 0.9314 | loss/kl: 0.0007 | loss/temporal: 1.6425 | loss/cluster: 0.0000
+[Epoch  49/50] loss/total: 1.0941 | loss/recon: 0.9289 | loss/kl: 0.0007 | loss/temporal: 1.6453 | loss/cluster: 0.0000
+[Epoch  50/50] loss/total: 1.1128 | loss/recon: 0.9458 | loss/kl: 0.0006 | loss/temporal: 1.6645 | loss/cluster: 0.0000
+  [VAE] Standard generation (649 samples)...
+  Generated augmented data: (649, 1776)
+  Combined training set: 1513 samples (864 baseline + 649 synthetic)
+  Saved augmented data → /home/l/liuyiwei/Supply-Chain-Project-AD/augmented_data/SECOM_augmented.npz
+  Training IForest (augmented)...
+    Val  ROC-AUC=0.4721  PR-AUC=0.2963
+    Test ROC-AUC=0.4314  PR-AUC=0.0477
+  Training COPOD (augmented)...
+    Val  ROC-AUC=0.5655  PR-AUC=0.4026
+    Test ROC-AUC=0.4444  PR-AUC=0.0596
+  Training ECOD (augmented)...
+    Val  ROC-AUC=0.5511  PR-AUC=0.3949
+    Test ROC-AUC=0.3894  PR-AUC=0.0476
+  Training LOF (augmented)...
+    Val  ROC-AUC=0.2891  PR-AUC=0.1764
+    Test ROC-AUC=0.4235  PR-AUC=0.0580
+
+────────────────────────────────────────────────────────────
+[BASELINE] AI4I_2020
+────────────────────────────────────────────────────────────
+  Loaded: 10000 samples, 6 features, anomaly rate = 0.034
+  Boundaries: train [0, 6000), val [6000, 8000), test [8000, 10000)
+  After preprocessing: 8 features (cont=5, cat=3)
+  After windowing: 32 features (4 × 8)
+  Split: train=5745 (all normal), val=2255, test=2000
+  Training IForest...
+    Val  ROC-AUC=0.6673  PR-AUC=0.2681
+    Test ROC-AUC=0.6369  PR-AUC=0.0261
+  Training COPOD...
+    Val  ROC-AUC=0.7515  PR-AUC=0.4243
+    Test ROC-AUC=0.8020  PR-AUC=0.0757
+  Training ECOD...
+    Val  ROC-AUC=0.7522  PR-AUC=0.4084
+    Test ROC-AUC=0.7340  PR-AUC=0.0500
+  Training LOF...
+    Val  ROC-AUC=0.4357  PR-AUC=0.1117
+    Test ROC-AUC=0.6951  PR-AUC=0.0441
+
+────────────────────────────────────────────────────────────
+[AUGMENTED] AI4I_2020
+────────────────────────────────────────────────────────────
+  Baseline branch: train=5745 (normal), val=2255, test=2000
+  VAE input: 8 features (cat=3, cont=5)
+  Normal-train windows: 4937 / 9996 total
+  Category proportions (Fix 4): [0.10130548 0.59843342 0.3002611 ]
+  [VAE] Training for 50 epochs on 4937 windows (D=8, T=5, clusters=3)...
+[Epoch   1/50] loss/total: 2.2085 | loss/recon: 0.6175 | loss/kl: 0.4275 | loss/temporal: 0.6521 | loss/cluster: 2.1964
+[Epoch   2/50] loss/total: 1.9672 | loss/recon: 0.4674 | loss/kl: 0.5652 | loss/temporal: 0.6492 | loss/cluster: 1.7394
+[Epoch   3/50] loss/total: 1.9407 | loss/recon: 0.4477 | loss/kl: 0.5532 | loss/temporal: 0.6482 | loss/cluster: 1.7501
+[Epoch   4/50] loss/total: 1.8953 | loss/recon: 0.4156 | loss/kl: 0.5478 | loss/temporal: 0.6478 | loss/cluster: 1.7341
+[Epoch   5/50] loss/total: 1.8697 | loss/recon: 0.4059 | loss/kl: 0.5527 | loss/temporal: 0.6467 | loss/cluster: 1.6929
+[Epoch   6/50] loss/total: 1.8599 | loss/recon: 0.4043 | loss/kl: 0.5524 | loss/temporal: 0.6508 | loss/cluster: 1.6762
+[Epoch   7/50] loss/total: 1.8452 | loss/recon: 0.3990 | loss/kl: 0.5533 | loss/temporal: 0.6465 | loss/cluster: 1.6565
+[Epoch   8/50] loss/total: 1.8365 | loss/recon: 0.3949 | loss/kl: 0.5490 | loss/temporal: 0.6450 | loss/cluster: 1.6563
+[Epoch   9/50] loss/total: 1.8362 | loss/recon: 0.3957 | loss/kl: 0.5541 | loss/temporal: 0.6487 | loss/cluster: 1.6428
+[Epoch  10/50] loss/total: 1.8352 | loss/recon: 0.3939 | loss/kl: 0.5549 | loss/temporal: 0.6458 | loss/cluster: 1.6436
+[Epoch  11/50] loss/total: 1.8316 | loss/recon: 0.3916 | loss/kl: 0.5553 | loss/temporal: 0.6444 | loss/cluster: 1.6404
+[Epoch  12/50] loss/total: 1.8303 | loss/recon: 0.3910 | loss/kl: 0.5570 | loss/temporal: 0.6446 | loss/cluster: 1.6356
+[Epoch  13/50] loss/total: 1.8309 | loss/recon: 0.3907 | loss/kl: 0.5544 | loss/temporal: 0.6468 | loss/cluster: 1.6422
+[Epoch  14/50] loss/total: 1.8268 | loss/recon: 0.3892 | loss/kl: 0.5557 | loss/temporal: 0.6466 | loss/cluster: 1.6344
+[Epoch  15/50] loss/total: 1.8228 | loss/recon: 0.3895 | loss/kl: 0.5506 | loss/temporal: 0.6461 | loss/cluster: 1.6362
+[Epoch  16/50] loss/total: 1.8243 | loss/recon: 0.3906 | loss/kl: 0.5488 | loss/temporal: 0.6460 | loss/cluster: 1.6404
+[Epoch  17/50] loss/total: 1.8244 | loss/recon: 0.3906 | loss/kl: 0.5468 | loss/temporal: 0.6463 | loss/cluster: 1.6447
+[Epoch  18/50] loss/total: 1.8179 | loss/recon: 0.3845 | loss/kl: 0.5482 | loss/temporal: 0.6452 | loss/cluster: 1.6415
+[Epoch  19/50] loss/total: 1.8133 | loss/recon: 0.3880 | loss/kl: 0.5422 | loss/temporal: 0.6434 | loss/cluster: 1.6375
+[Epoch  20/50] loss/total: 1.8134 | loss/recon: 0.3877 | loss/kl: 0.5489 | loss/temporal: 0.6472 | loss/cluster: 1.6242
+[Epoch  21/50] loss/total: 1.8093 | loss/recon: 0.3846 | loss/kl: 0.5510 | loss/temporal: 0.6467 | loss/cluster: 1.6179
+[Epoch  22/50] loss/total: 1.8112 | loss/recon: 0.3843 | loss/kl: 0.5519 | loss/temporal: 0.6468 | loss/cluster: 1.6207
+[Epoch  23/50] loss/total: 1.8129 | loss/recon: 0.3849 | loss/kl: 0.5522 | loss/temporal: 0.6456 | loss/cluster: 1.6226
+[Epoch  24/50] loss/total: 1.8095 | loss/recon: 0.3850 | loss/kl: 0.5503 | loss/temporal: 0.6464 | loss/cluster: 1.6193
+[Epoch  25/50] loss/total: 1.8072 | loss/recon: 0.3839 | loss/kl: 0.5494 | loss/temporal: 0.6440 | loss/cluster: 1.6189
+[Epoch  26/50] loss/total: 1.8104 | loss/recon: 0.3840 | loss/kl: 0.5507 | loss/temporal: 0.6498 | loss/cluster: 1.6213
+[Epoch  27/50] loss/total: 1.8052 | loss/recon: 0.3824 | loss/kl: 0.5509 | loss/temporal: 0.6435 | loss/cluster: 1.6151
+[Epoch  28/50] loss/total: 1.8063 | loss/recon: 0.3837 | loss/kl: 0.5486 | loss/temporal: 0.6468 | loss/cluster: 1.6185
+[Epoch  29/50] loss/total: 1.8034 | loss/recon: 0.3823 | loss/kl: 0.5488 | loss/temporal: 0.6462 | loss/cluster: 1.6154
+[Epoch  30/50] loss/total: 1.8066 | loss/recon: 0.3837 | loss/kl: 0.5470 | loss/temporal: 0.6446 | loss/cluster: 1.6230
+[Epoch  31/50] loss/total: 1.8091 | loss/recon: 0.3823 | loss/kl: 0.5529 | loss/temporal: 0.6457 | loss/cluster: 1.6186
+[Epoch  32/50] loss/total: 1.8059 | loss/recon: 0.3825 | loss/kl: 0.5493 | loss/temporal: 0.6449 | loss/cluster: 1.6191
+[Epoch  33/50] loss/total: 1.8068 | loss/recon: 0.3808 | loss/kl: 0.5513 | loss/temporal: 0.6457 | loss/cluster: 1.6202
+[Epoch  34/50] loss/total: 1.8026 | loss/recon: 0.3841 | loss/kl: 0.5453 | loss/temporal: 0.6534 | loss/cluster: 1.6157
+[Epoch  35/50] loss/total: 1.8044 | loss/recon: 0.3813 | loss/kl: 0.5521 | loss/temporal: 0.6438 | loss/cluster: 1.6132
+[Epoch  36/50] loss/total: 1.8055 | loss/recon: 0.3795 | loss/kl: 0.5514 | loss/temporal: 0.6436 | loss/cluster: 1.6204
+[Epoch  37/50] loss/total: 1.8076 | loss/recon: 0.3804 | loss/kl: 0.5530 | loss/temporal: 0.6453 | loss/cluster: 1.6193
+[Epoch  38/50] loss/total: 1.8039 | loss/recon: 0.3817 | loss/kl: 0.5495 | loss/temporal: 0.6475 | loss/cluster: 1.6159
+[Epoch  39/50] loss/total: 1.8011 | loss/recon: 0.3795 | loss/kl: 0.5492 | loss/temporal: 0.6441 | loss/cluster: 1.6158
+[Epoch  40/50] loss/total: 1.8035 | loss/recon: 0.3811 | loss/kl: 0.5488 | loss/temporal: 0.6475 | loss/cluster: 1.6177
+[Epoch  41/50] loss/total: 1.8047 | loss/recon: 0.3793 | loss/kl: 0.5501 | loss/temporal: 0.6466 | loss/cluster: 1.6212
+[Epoch  42/50] loss/total: 1.8042 | loss/recon: 0.3788 | loss/kl: 0.5536 | loss/temporal: 0.6447 | loss/cluster: 1.6146
+[Epoch  43/50] loss/total: 1.8046 | loss/recon: 0.3794 | loss/kl: 0.5536 | loss/temporal: 0.6433 | loss/cluster: 1.6147
+[Epoch  44/50] loss/total: 1.7987 | loss/recon: 0.3786 | loss/kl: 0.5469 | loss/temporal: 0.6458 | loss/cluster: 1.6174
+[Epoch  45/50] loss/total: 1.8094 | loss/recon: 0.3809 | loss/kl: 0.5524 | loss/temporal: 0.6437 | loss/cluster: 1.6234
+[Epoch  46/50] loss/total: 1.7998 | loss/recon: 0.3795 | loss/kl: 0.5499 | loss/temporal: 0.6470 | loss/cluster: 1.6115
+[Epoch  47/50] loss/total: 1.8024 | loss/recon: 0.3796 | loss/kl: 0.5499 | loss/temporal: 0.6466 | loss/cluster: 1.6163
+[Epoch  48/50] loss/total: 1.8032 | loss/recon: 0.3777 | loss/kl: 0.5526 | loss/temporal: 0.6452 | loss/cluster: 1.6168
+[Epoch  49/50] loss/total: 1.8009 | loss/recon: 0.3777 | loss/kl: 0.5512 | loss/temporal: 0.6445 | loss/cluster: 1.6151
+[Epoch  50/50] loss/total: 1.8017 | loss/recon: 0.3762 | loss/kl: 0.5531 | loss/temporal: 0.6425 | loss/cluster: 1.6164
+  [VAE] Conditioned generation using Type proportions ({0: np.float64(0.101), 1: np.float64(0.598), 2: np.float64(0.3)})
+  Generated augmented data: (4937, 32)
+  Combined training set: 10682 samples (5745 baseline + 4937 synthetic)
+  Saved augmented data → /home/l/liuyiwei/Supply-Chain-Project-AD/augmented_data/AI4I_2020_augmented.npz
+  Training IForest (augmented)...
+    Val  ROC-AUC=0.6716  PR-AUC=0.2812
+    Test ROC-AUC=0.6862  PR-AUC=0.0362
+  Training COPOD (augmented)...
+    Val  ROC-AUC=0.7513  PR-AUC=0.3934
+    Test ROC-AUC=0.8147  PR-AUC=0.0852
+  Training ECOD (augmented)...
+    Val  ROC-AUC=0.7771  PR-AUC=0.4297
+    Test ROC-AUC=0.8069  PR-AUC=0.0813
+  Training LOF (augmented)...
+    Val  ROC-AUC=0.4291  PR-AUC=0.1095
+    Test ROC-AUC=0.6836  PR-AUC=0.0368
+
+────────────────────────────────────────────────────────────
+[BASELINE] Wafer_Quality
+────────────────────────────────────────────────────────────
+  Loaded: 4219 samples, 11 features, anomaly rate = 0.146
+  Boundaries: train [0, 2531), val [2531, 3375), test [3375, 4219)
+  After preprocessing: 13 features (cont=10, cat=3)
+  After windowing: 52 features (4 × 13)
+  Split: train=2185 (all normal), val=1190, test=844
+  Training IForest...
+    Val  ROC-AUC=0.4810  PR-AUC=0.3829
+    Test ROC-AUC=0.5350  PR-AUC=0.1883
+  Training COPOD...
+    Val  ROC-AUC=0.4731  PR-AUC=0.3894
+    Test ROC-AUC=0.5506  PR-AUC=0.1825
+  Training ECOD...
+    Val  ROC-AUC=0.4711  PR-AUC=0.3933
+    Test ROC-AUC=0.5227  PR-AUC=0.1754
+  Training LOF...
+    Val  ROC-AUC=0.4413  PR-AUC=0.3637
+    Test ROC-AUC=0.5216  PR-AUC=0.1696
+
+────────────────────────────────────────────────────────────
+[AUGMENTED] Wafer_Quality
+────────────────────────────────────────────────────────────
+  Baseline branch: train=2185 (normal), val=1190, test=844
+  VAE input: 13 features (cat=3, cont=10)
+  Normal-train windows: 1194 / 4215 total
+  Category proportions (Fix 4): [0.33135011 0.33226545 0.33638444]
+  [VAE] Training for 50 epochs on 1194 windows (D=13, T=5, clusters=3)...
+[Epoch   1/50] loss/total: 2.9354 | loss/recon: 1.0230 | loss/kl: 0.0855 | loss/temporal: 1.6375 | loss/cluster: 3.3263
+[Epoch   2/50] loss/total: 2.4214 | loss/recon: 0.8393 | loss/kl: 0.5240 | loss/temporal: 1.6415 | loss/cluster: 1.7881
+[Epoch   3/50] loss/total: 2.3719 | loss/recon: 0.8321 | loss/kl: 0.4930 | loss/temporal: 1.6410 | loss/cluster: 1.7654
+[Epoch   4/50] loss/total: 2.3609 | loss/recon: 0.8281 | loss/kl: 0.5072 | loss/temporal: 1.6405 | loss/cluster: 1.7229
+[Epoch   5/50] loss/total: 2.3566 | loss/recon: 0.8261 | loss/kl: 0.5145 | loss/temporal: 1.6390 | loss/cluster: 1.7041
+[Epoch   6/50] loss/total: 2.3517 | loss/recon: 0.8269 | loss/kl: 0.4954 | loss/temporal: 1.6405 | loss/cluster: 1.7308
+[Epoch   7/50] loss/total: 2.3432 | loss/recon: 0.8244 | loss/kl: 0.4948 | loss/temporal: 1.6398 | loss/cluster: 1.7202
+[Epoch   8/50] loss/total: 2.3415 | loss/recon: 0.8261 | loss/kl: 0.5005 | loss/temporal: 1.6428 | loss/cluster: 1.7012
+[Epoch   9/50] loss/total: 2.3413 | loss/recon: 0.8239 | loss/kl: 0.4916 | loss/temporal: 1.6390 | loss/cluster: 1.7239
+[Epoch  10/50] loss/total: 2.3419 | loss/recon: 0.8245 | loss/kl: 0.4960 | loss/temporal: 1.6403 | loss/cluster: 1.7148
+[Epoch  11/50] loss/total: 2.3370 | loss/recon: 0.8238 | loss/kl: 0.4943 | loss/temporal: 1.6396 | loss/cluster: 1.7099
+[Epoch  12/50] loss/total: 2.3285 | loss/recon: 0.8233 | loss/kl: 0.4867 | loss/temporal: 1.6387 | loss/cluster: 1.7091
+[Epoch  13/50] loss/total: 2.3230 | loss/recon: 0.8235 | loss/kl: 0.4827 | loss/temporal: 1.6404 | loss/cluster: 1.7056
+[Epoch  14/50] loss/total: 2.3199 | loss/recon: 0.8237 | loss/kl: 0.4785 | loss/temporal: 1.6396 | loss/cluster: 1.7076
+[Epoch  15/50] loss/total: 2.3157 | loss/recon: 0.8230 | loss/kl: 0.4706 | loss/temporal: 1.6397 | loss/cluster: 1.7163
+[Epoch  16/50] loss/total: 2.3175 | loss/recon: 0.8224 | loss/kl: 0.4722 | loss/temporal: 1.6393 | loss/cluster: 1.7180
+[Epoch  17/50] loss/total: 2.3156 | loss/recon: 0.8222 | loss/kl: 0.4732 | loss/temporal: 1.6393 | loss/cluster: 1.7126
+[Epoch  18/50] loss/total: 2.3091 | loss/recon: 0.8224 | loss/kl: 0.4639 | loss/temporal: 1.6395 | loss/cluster: 1.7177
+[Epoch  19/50] loss/total: 2.3088 | loss/recon: 0.8227 | loss/kl: 0.4673 | loss/temporal: 1.6397 | loss/cluster: 1.7095
+[Epoch  20/50] loss/total: 2.3114 | loss/recon: 0.8228 | loss/kl: 0.4646 | loss/temporal: 1.6414 | loss/cluster: 1.7199
+[Epoch  21/50] loss/total: 2.3040 | loss/recon: 0.8219 | loss/kl: 0.4590 | loss/temporal: 1.6390 | loss/cluster: 1.7185
+[Epoch  22/50] loss/total: 2.3025 | loss/recon: 0.8217 | loss/kl: 0.4571 | loss/temporal: 1.6384 | loss/cluster: 1.7197
+[Epoch  23/50] loss/total: 2.2997 | loss/recon: 0.8217 | loss/kl: 0.4530 | loss/temporal: 1.6382 | loss/cluster: 1.7224
+[Epoch  24/50] loss/total: 2.2965 | loss/recon: 0.8203 | loss/kl: 0.4457 | loss/temporal: 1.6378 | loss/cluster: 1.7334
+[Epoch  25/50] loss/total: 2.2998 | loss/recon: 0.8222 | loss/kl: 0.4371 | loss/temporal: 1.6402 | loss/cluster: 1.7530
+[Epoch  26/50] loss/total: 2.2899 | loss/recon: 0.8223 | loss/kl: 0.4288 | loss/temporal: 1.6396 | loss/cluster: 1.7496
+[Epoch  27/50] loss/total: 2.2836 | loss/recon: 0.8219 | loss/kl: 0.4294 | loss/temporal: 1.6389 | loss/cluster: 1.7367
+[Epoch  28/50] loss/total: 2.2769 | loss/recon: 0.8232 | loss/kl: 0.4289 | loss/temporal: 1.6411 | loss/cluster: 1.7212
+[Epoch  29/50] loss/total: 2.2724 | loss/recon: 0.8223 | loss/kl: 0.4249 | loss/temporal: 1.6396 | loss/cluster: 1.7226
+[Epoch  30/50] loss/total: 2.2726 | loss/recon: 0.8223 | loss/kl: 0.4377 | loss/temporal: 1.6391 | loss/cluster: 1.6974
+[Epoch  31/50] loss/total: 2.2661 | loss/recon: 0.8214 | loss/kl: 0.4298 | loss/temporal: 1.6385 | loss/cluster: 1.7020
+[Epoch  32/50] loss/total: 2.2695 | loss/recon: 0.8215 | loss/kl: 0.4410 | loss/temporal: 1.6386 | loss/cluster: 1.6862
+[Epoch  33/50] loss/total: 2.2595 | loss/recon: 0.8218 | loss/kl: 0.4266 | loss/temporal: 1.6411 | loss/cluster: 1.6940
+[Epoch  34/50] loss/total: 2.2621 | loss/recon: 0.8218 | loss/kl: 0.4364 | loss/temporal: 1.6384 | loss/cluster: 1.6801
+[Epoch  35/50] loss/total: 2.2642 | loss/recon: 0.8213 | loss/kl: 0.4398 | loss/temporal: 1.6411 | loss/cluster: 1.6779
+[Epoch  36/50] loss/total: 2.2561 | loss/recon: 0.8216 | loss/kl: 0.4343 | loss/temporal: 1.6376 | loss/cluster: 1.6729
+[Epoch  37/50] loss/total: 2.2626 | loss/recon: 0.8212 | loss/kl: 0.4376 | loss/temporal: 1.6401 | loss/cluster: 1.6795
+[Epoch  38/50] loss/total: 2.2662 | loss/recon: 0.8226 | loss/kl: 0.4427 | loss/temporal: 1.6379 | loss/cluster: 1.6742
+[Epoch  39/50] loss/total: 2.2633 | loss/recon: 0.8215 | loss/kl: 0.4390 | loss/temporal: 1.6380 | loss/cluster: 1.6781
+[Epoch  40/50] loss/total: 2.2522 | loss/recon: 0.8217 | loss/kl: 0.4287 | loss/temporal: 1.6389 | loss/cluster: 1.6759
+[Epoch  41/50] loss/total: 2.2454 | loss/recon: 0.8223 | loss/kl: 0.4294 | loss/temporal: 1.6382 | loss/cluster: 1.6597
+[Epoch  42/50] loss/total: 2.2503 | loss/recon: 0.8219 | loss/kl: 0.4347 | loss/temporal: 1.6397 | loss/cluster: 1.6594
+[Epoch  43/50] loss/total: 2.2504 | loss/recon: 0.8214 | loss/kl: 0.4260 | loss/temporal: 1.6383 | loss/cluster: 1.6783
+[Epoch  44/50] loss/total: 2.2553 | loss/recon: 0.8214 | loss/kl: 0.4337 | loss/temporal: 1.6398 | loss/cluster: 1.6725
+[Epoch  45/50] loss/total: 2.2443 | loss/recon: 0.8207 | loss/kl: 0.4292 | loss/temporal: 1.6377 | loss/cluster: 1.6612
+[Epoch  46/50] loss/total: 2.2519 | loss/recon: 0.8217 | loss/kl: 0.4369 | loss/temporal: 1.6390 | loss/cluster: 1.6588
+[Epoch  47/50] loss/total: 2.2484 | loss/recon: 0.8214 | loss/kl: 0.4354 | loss/temporal: 1.6385 | loss/cluster: 1.6556
+[Epoch  48/50] loss/total: 2.2461 | loss/recon: 0.8214 | loss/kl: 0.4355 | loss/temporal: 1.6375 | loss/cluster: 1.6511
+[Epoch  49/50] loss/total: 2.2476 | loss/recon: 0.8221 | loss/kl: 0.4324 | loss/temporal: 1.6410 | loss/cluster: 1.6581
+[Epoch  50/50] loss/total: 2.2447 | loss/recon: 0.8213 | loss/kl: 0.4338 | loss/temporal: 1.6384 | loss/cluster: 1.6515
+  [VAE] Conditioned generation using Tool_Type proportions ({0: np.float64(0.331), 1: np.float64(0.332), 2: np.float64(0.336)})
+  Generated augmented data: (1194, 52)
+  Combined training set: 3379 samples (2185 baseline + 1194 synthetic)
+  Saved augmented data → /home/l/liuyiwei/Supply-Chain-Project-AD/augmented_data/Wafer_Quality_augmented.npz
+  Training IForest (augmented)...
+    Val  ROC-AUC=0.4834  PR-AUC=0.3931
+    Test ROC-AUC=0.5294  PR-AUC=0.1906
+  Training COPOD (augmented)...
+    Val  ROC-AUC=0.4867  PR-AUC=0.4042
+    Test ROC-AUC=0.5620  PR-AUC=0.1890
+  Training ECOD (augmented)...
+    Val  ROC-AUC=0.4792  PR-AUC=0.3971
+    Test ROC-AUC=0.5465  PR-AUC=0.1864
+  Training LOF (augmented)...
+    Val  ROC-AUC=0.4413  PR-AUC=0.3637
+    Test ROC-AUC=0.5216  PR-AUC=0.1696
+  Results saved → /home/l/liuyiwei/Supply-Chain-Project-AD/results/metrics/pipeline_results.csv
+
+========================================================================
+RESULTS SUMMARY
+========================================================================
+      dataset   model  pipeline split  roc_auc  pr_auc
+        SECOM IForest  baseline   val   0.4386  0.2920
+        SECOM IForest  baseline  test   0.2902  0.0420
+        SECOM   COPOD  baseline   val   0.6205  0.4383
+        SECOM   COPOD  baseline  test   0.4324  0.0532
+        SECOM    ECOD  baseline   val   0.5894  0.3895
+        SECOM    ECOD  baseline  test   0.3712  0.0436
+        SECOM     LOF  baseline   val   0.2891  0.1764
+        SECOM     LOF  baseline  test   0.4235  0.0580
+        SECOM IForest augmented   val   0.4721  0.2963
+        SECOM IForest augmented  test   0.4314  0.0477
+        SECOM   COPOD augmented   val   0.5655  0.4026
+        SECOM   COPOD augmented  test   0.4444  0.0596
+        SECOM    ECOD augmented   val   0.5511  0.3949
+        SECOM    ECOD augmented  test   0.3894  0.0476
+        SECOM     LOF augmented   val   0.2891  0.1764
+        SECOM     LOF augmented  test   0.4235  0.0580
+    AI4I_2020 IForest  baseline   val   0.6673  0.2681
+    AI4I_2020 IForest  baseline  test   0.6369  0.0261
+    AI4I_2020   COPOD  baseline   val   0.7515  0.4243
+    AI4I_2020   COPOD  baseline  test   0.8020  0.0757
+    AI4I_2020    ECOD  baseline   val   0.7522  0.4084
+    AI4I_2020    ECOD  baseline  test   0.7340  0.0500
+    AI4I_2020     LOF  baseline   val   0.4357  0.1117
+    AI4I_2020     LOF  baseline  test   0.6951  0.0441
+    AI4I_2020 IForest augmented   val   0.6716  0.2812
+    AI4I_2020 IForest augmented  test   0.6862  0.0362
+    AI4I_2020   COPOD augmented   val   0.7513  0.3934
+    AI4I_2020   COPOD augmented  test   0.8147  0.0852
+    AI4I_2020    ECOD augmented   val   0.7771  0.4297
+    AI4I_2020    ECOD augmented  test   0.8069  0.0813
+    AI4I_2020     LOF augmented   val   0.4291  0.1095
+    AI4I_2020     LOF augmented  test   0.6836  0.0368
+Wafer_Quality IForest  baseline   val   0.4810  0.3829
+Wafer_Quality IForest  baseline  test   0.5350  0.1883
+Wafer_Quality   COPOD  baseline   val   0.4731  0.3894
+Wafer_Quality   COPOD  baseline  test   0.5506  0.1825
+Wafer_Quality    ECOD  baseline   val   0.4711  0.3933
+Wafer_Quality    ECOD  baseline  test   0.5227  0.1754
+Wafer_Quality     LOF  baseline   val   0.4413  0.3637
+Wafer_Quality     LOF  baseline  test   0.5216  0.1696
+Wafer_Quality IForest augmented   val   0.4834  0.3931
+Wafer_Quality IForest augmented  test   0.5294  0.1906
+Wafer_Quality   COPOD augmented   val   0.4867  0.4042
+Wafer_Quality   COPOD augmented  test   0.5620  0.1890
+Wafer_Quality    ECOD augmented   val   0.4792  0.3971
+Wafer_Quality    ECOD augmented  test   0.5465  0.1864
+Wafer_Quality     LOF augmented   val   0.4413  0.3637
+Wafer_Quality     LOF augmented  test   0.5216  0.1696
+========================================================================
+
